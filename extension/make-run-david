@@ -1,0 +1,2 @@
+david:
+	$(PHP_EXECUTABLE) -n -c $(top_builddir)/tmp-php.ini -d extension_dir=$(top_builddir)/modules/ $(top_srcdir)/david.php

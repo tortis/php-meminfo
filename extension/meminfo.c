@@ -76,6 +76,7 @@ PHP_FUNCTION(meminfo_dump)
     php_stream_printf(stream, "  },\n");
 
     php_stream_printf(stream, "  \"items\": {\n");
+
     meminfo_browse_exec_frames(stream, &visited_items, &first_element);
     meminfo_browse_class_static_members(stream, &visited_items, &first_element);
 
