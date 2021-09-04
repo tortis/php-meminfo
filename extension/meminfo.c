@@ -69,9 +69,11 @@ PHP_FUNCTION(meminfo_test)
     }
 
 
-    ZVAL_STRING(long_zend_str, long_str);
+    // ZVAL_STRING(long_zend_str, long_str); // Will crash PHP by exceeding memory limit
     fprintf(stdout, "Allocated a long string, %lu\n", strlen(long_str));
 
+
+    // Test hashset
     hashset_t set = hashset_create();
 
     if (set == NULL) {
@@ -82,10 +84,12 @@ PHP_FUNCTION(meminfo_test)
     char *foo = "foo";
     char *missing = "missing";
 
+    fprintf(stdout, "Inserting 'foo' into hashset\n");
     hashset_add(set, foo);
 
-    assert(hashset_is_member(set, foo) == 1);
-    assert(hashset_is_member(set, missing) == 0);
+    fprintf(stdout, "set contains 'foo' = %d\n", hashset_is_member(set, foo));
+    fprintf(stdout, "set contains 'missing' = %d\n", hashset_is_member(set, missing));
+    fprintf(stdout, "Hashset is good to go \n");
 }
 
 /**
