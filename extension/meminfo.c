@@ -2,6 +2,8 @@
 #include "config.h"
 #endif
 
+#include <stdint.h>
+
 #include "php.h"
 #include "php_meminfo.h"
 
@@ -16,18 +18,25 @@
 #include "SAPI.h"
 #include "zend_API.h"
 
+#include "hashset.h"
+
 #if PHP_VERSION_ID >= 80000
 ZEND_BEGIN_ARG_INFO_EX(arginfo_meminfo_dump, 0, 0, 1)
     ZEND_ARG_INFO(0, output_stream)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_meminfo_test, 0, 0, 0)
+ZEND_END_ARG_INFO()
+
 const zend_function_entry meminfo_functions[] = {
     PHP_FE(meminfo_dump, arginfo_meminfo_dump)
+    PHP_FE(meminfo_test, arginfo_meminfo_test)
     PHP_FE_END
 };
 #else
 const zend_function_entry meminfo_functions[] = {
     PHP_FE(meminfo_dump, NULL)
+    PHP_FE(meminfo_test, NULL)
     PHP_FE_END
 };
 #endif
@@ -45,6 +54,39 @@ zend_module_entry meminfo_module_entry = {
     STANDARD_MODULE_PROPERTIES
 };
 
+PHP_FUNCTION(meminfo_test)
+{
+    fprintf(stdout, "Hello World from c\n");
+
+    char* long_str;
+    zval* long_zend_str = NULL;
+
+    int bytes = 1024 * 1024 * 10;
+    long_str = (char*) malloc(bytes);
+    int i;
+    for (i = 0; i < bytes; i++) {
+        long_str[i] = 'a';
+    }
+
+
+    ZVAL_STRING(long_zend_str, long_str);
+    fprintf(stdout, "Allocated a long string, %lu\n", strlen(long_str));
+
+    hashset_t set = hashset_create();
+
+    if (set == NULL) {
+        fprintf(stderr, "failed to create hashset instance\n");
+        abort();
+    }
+
+    char *foo = "foo";
+    char *missing = "missing";
+
+    hashset_add(set, foo);
+
+    assert(hashset_is_member(set, foo) == 1);
+    assert(hashset_is_member(set, missing) == 0);
+}
 
 /**
  * Generate a JSON output of the list of items in memory (objects, arrays, string, etc...)
@@ -63,7 +105,7 @@ PHP_FUNCTION(meminfo_dump)
         return;
     }
 
-    zend_hash_init(&visited_items, 1000, NULL, NULL, 0);
+    zend_hash_init(&visited_items, 1000, NULL, NULL, 0); // ZMEM
 
     php_stream_from_zval(stream, zval_stream);
     php_stream_printf(stream, "{\n");
@@ -76,6 +118,7 @@ PHP_FUNCTION(meminfo_dump)
     php_stream_printf(stream, "  },\n");
 
     php_stream_printf(stream, "  \"items\": {\n");
+
     meminfo_browse_exec_frames(stream, &visited_items, &first_element);
     meminfo_browse_class_static_members(stream, &visited_items, &first_element);
 
@@ -107,7 +150,7 @@ void meminfo_browse_exec_frames(php_stream *stream,  HashTable *visited_items, i
 
         // copy variables from ex->func->op_array.vars into the symbol table for the last called *user* function
         // therefore it does necessary returns the symbol table of the current frame 
-        p_symbol_table = zend_rebuild_symbol_table();
+        p_symbol_table = zend_rebuild_symbol_table(); // ZMEM?
 
         if (p_symbol_table != NULL) {
 
@@ -318,7 +361,7 @@ void meminfo_zval_dump(php_stream * stream, char * frame_label, zend_string * sy
     if (Z_TYPE_P(zv) == IS_OBJECT) {
         sprintf(zval_identifier, "%p", Z_OBJ_P(zv));
     } else {
-        sprintf(zval_identifier, "%p", zv);
+        sprintf(zval_identifier, "%lu", (uintptr_t)zv);
     }
 
     if (meminfo_visit_item(zval_identifier, visited_items)) {
