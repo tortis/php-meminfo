@@ -16,6 +16,8 @@
 #include "SAPI.h"
 #include "zend_API.h"
 
+#include "hashset.h"
+
 #if PHP_VERSION_ID >= 80000
 ZEND_BEGIN_ARG_INFO_EX(arginfo_meminfo_dump, 0, 0, 1)
     ZEND_ARG_INFO(0, output_stream)
@@ -45,7 +47,6 @@ zend_module_entry meminfo_module_entry = {
     STANDARD_MODULE_PROPERTIES
 };
 
-
 /**
  * Generate a JSON output of the list of items in memory (objects, arrays, string, etc...)
  * with their sizes and other information
@@ -57,13 +58,23 @@ PHP_FUNCTION(meminfo_dump)
     int first_element = 1;
 
     php_stream *stream;
-    HashTable visited_items;
+
+#ifdef USE_HASHSET
+    meminfo_hashset visited_items = hashset_create();
+
+    if (visited_items == NULL) {
+        fprintf(stderr, "failed to create hashset instance\n");
+        abort(); // @@@ Trigger a proper exception
+    }
+#else
+    HashTable ht;
+    zend_hash_init(&ht, 1000, NULL, NULL, 0);
+    meminfo_hashset visited_items = &ht;
+#endif
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "r", &zval_stream) == FAILURE) {
         return;
     }
-
-    zend_hash_init(&visited_items, 1000, NULL, NULL, 0);
 
     php_stream_from_zval(stream, zval_stream);
     php_stream_printf(stream, "{\n");
@@ -76,19 +87,24 @@ PHP_FUNCTION(meminfo_dump)
     php_stream_printf(stream, "  },\n");
 
     php_stream_printf(stream, "  \"items\": {\n");
-    meminfo_browse_exec_frames(stream, &visited_items, &first_element);
-    meminfo_browse_class_static_members(stream, &visited_items, &first_element);
+
+    meminfo_browse_exec_frames(stream, visited_items, &first_element);
+    meminfo_browse_class_static_members(stream, visited_items, &first_element);
 
     php_stream_printf(stream, "\n    }\n");
     php_stream_printf(stream, "}\n}\n");
 
-    zend_hash_destroy(&visited_items);
+#ifdef USE_HASHSET
+    hashset_destroy(visited_items);
+#else
+    zend_hash_destroy(visited_items);
+#endif
 }
 
 /**
  * Go through all exec frames to gather declared variables and follow them to record items in memory
  */
-void meminfo_browse_exec_frames(php_stream *stream,  HashTable *visited_items, int *first_element)
+void meminfo_browse_exec_frames(php_stream *stream, meminfo_hashset visited_items, int *first_element)
 {
     zend_execute_data *exec_frame, *prev_frame;
     zend_array *p_symbol_table;
@@ -127,7 +143,7 @@ void meminfo_browse_exec_frames(php_stream *stream,  HashTable *visited_items, i
 /**
  * Go through static members of classes
  */
-void meminfo_browse_class_static_members(php_stream *stream,  HashTable *visited_items, int *first_element)
+void meminfo_browse_class_static_members(php_stream *stream,  meminfo_hashset visited_items, int *first_element)
 {
     HashPosition ce_pos;
     HashPosition prop_pos;
@@ -186,7 +202,7 @@ void meminfo_browse_class_static_members(php_stream *stream,  HashTable *visited
     }
 }
 
-void meminfo_browse_zvals_from_symbol_table(php_stream *stream, char* frame_label, HashTable *p_symbol_table, HashTable * visited_items, int *first_element)
+void meminfo_browse_zvals_from_symbol_table(php_stream *stream, char* frame_label, HashTable *p_symbol_table, meminfo_hashset visited_items, int *first_element)
 {
     zval *zval_to_dump;
     HashPosition pos;
@@ -206,14 +222,19 @@ void meminfo_browse_zvals_from_symbol_table(php_stream *stream, char* frame_labe
     }
 }
 
-int meminfo_visit_item(char * item_identifier, HashTable *visited_items)
+int meminfo_visit_item(void* item_identifier, meminfo_hashset visited_items)
 {
     int found = 0;
-    zval isset;
+#ifdef USE_HASHSET
+    if (hashset_is_member(visited_items, item_identifier)) {
+        found = 1;
+    } else {
+        hashset_add(visited_items, item_identifier);
+    }
+#else
     zend_string * zstr_item_identifier;
-
     zstr_item_identifier = zend_string_init(item_identifier, strlen(item_identifier), 0);
-
+    zval isset;
     ZVAL_LONG(&isset, 1);
 
     if (zend_hash_exists(visited_items, zstr_item_identifier)) {
@@ -221,12 +242,14 @@ int meminfo_visit_item(char * item_identifier, HashTable *visited_items)
     } else {
         zend_hash_add(visited_items, zstr_item_identifier, &isset);
     }
+
     zend_string_release(zstr_item_identifier);
+#endif
 
     return found;
 }
 
-void meminfo_hash_dump(php_stream *stream, HashTable *ht, zend_bool is_object, HashTable *visited_items, int *first_element)
+void meminfo_hash_dump(php_stream *stream, HashTable *ht, zend_bool is_object, meminfo_hashset visited_items, int *first_element)
 {
     zval *zval;
 
@@ -303,7 +326,7 @@ void meminfo_hash_dump(php_stream *stream, HashTable *ht, zend_bool is_object, H
     }
 }
 
-void meminfo_zval_dump(php_stream * stream, char * frame_label, zend_string * symbol_name, zval * zv, HashTable *visited_items, int *first_element)
+void meminfo_zval_dump(php_stream * stream, char * frame_label, zend_string * symbol_name, zval * zv, meminfo_hashset visited_items, int *first_element)
 {
     char zval_identifier[17];
 
@@ -315,15 +338,24 @@ void meminfo_zval_dump(php_stream * stream, char * frame_label, zend_string * sy
         ZVAL_DEREF(zv);
     }
 
+    void* id;
     if (Z_TYPE_P(zv) == IS_OBJECT) {
+        id = Z_OBJ_P(zv);
         sprintf(zval_identifier, "%p", Z_OBJ_P(zv));
     } else {
+        id = zv;
         sprintf(zval_identifier, "%p", zv);
     }
 
+#ifdef USE_HASHSET
+    if (meminfo_visit_item(id, visited_items)) {
+        return;
+    }
+#else
     if (meminfo_visit_item(zval_identifier, visited_items)) {
         return;
     }
+#endif
 
     if (! *first_element) {
         php_stream_printf(stream, "\n    },\n");
