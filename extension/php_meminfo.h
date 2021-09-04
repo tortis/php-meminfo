@@ -22,7 +22,6 @@ typedef HashTable* meminfo_hashset;
 #endif
 
 PHP_FUNCTION(meminfo_dump);
-PHP_FUNCTION(meminfo_test);
 
 zend_ulong   meminfo_get_element_size(zval* z);
 

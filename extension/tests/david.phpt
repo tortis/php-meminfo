@@ -1,3 +1,10 @@
+--TEST--
+David playground
+--SKIPIF--
+<?php
+    if (!extension_loaded('json')) die('skip json ext not loaded');
+?>
+--FILE--
 <?php
 
 echo "Hello world\n";
@@ -25,8 +32,12 @@ if (extension_loaded('meminfo')) {
     echo "Meminfo is installed\n";
     echo "Allocating 120MB in php\n";
     $d = str_repeat('*', 1024 * 1024 * 120);
-    meminfo_test();
+    /* meminfo_test(); */
 
     $s = fopen("php://stdout", "w");
     meminfo_dump($s);
+} else {
+    echo "Meminfo is not installed\n";
 }
+--EXPECT--
+
