@@ -2,8 +2,6 @@
 #include "config.h"
 #endif
 
-#include <stdint.h>
-
 #include "php.h"
 #include "php_meminfo.h"
 
