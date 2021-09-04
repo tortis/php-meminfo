@@ -30,7 +30,6 @@ const zend_function_entry meminfo_functions[] = {
 #else
 const zend_function_entry meminfo_functions[] = {
     PHP_FE(meminfo_dump, NULL)
-    PHP_FE(meminfo_test, NULL)
     PHP_FE_END
 };
 #endif
