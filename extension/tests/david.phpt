@@ -2,6 +2,7 @@
 David playground
 --SKIPIF--
 <?php
+    echo "skip - this is not a real test";
     if (!extension_loaded('json')) die('skip json ext not loaded');
 ?>
 --FILE--
@@ -40,4 +41,4 @@ if (extension_loaded('meminfo')) {
     echo "Meminfo is not installed\n";
 }
 --EXPECT--
-
+nothing
