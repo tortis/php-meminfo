@@ -3,6 +3,7 @@
 
 #include "php.h"
 #include "hashset.h"
+#include "stack.h"
 
 extern zend_module_entry meminfo_module_entry;
 #define phpext_meminfo_ptr &meminfo_module_entry
@@ -22,6 +23,7 @@ typedef HashTable* meminfo_hashset;
 #endif
 
 PHP_FUNCTION(meminfo_dump);
+PHP_FUNCTION(meminfo_test);
 
 zend_ulong   meminfo_get_element_size(zval* z);
 
@@ -29,10 +31,13 @@ zend_ulong   meminfo_get_element_size(zval* z);
 void meminfo_browse_exec_frames(php_stream *stream,  meminfo_hashset visited_items, int *first_element);
 void meminfo_browse_class_static_members(php_stream *stream,  meminfo_hashset visited_items, int *first_element);
 
+void meminfo_zval_dump_simple(php_stream * stream, zval * zv, meminfo_hashset visited_items, meminfo_stack* stack, int *first_element);
+void meminfo_zval_dump_children(php_stream *stream, HashTable *ht, zend_bool is_object, meminfo_hashset visited_items, meminfo_stack* stack);
 void meminfo_zval_dump(php_stream * stream, char * frame_label, zend_string * symbol_name, zval * zv, meminfo_hashset visited_items, int *first_element);
 void meminfo_hash_dump(php_stream *stream, HashTable *ht, zend_bool is_object, meminfo_hashset visited_items, int *first_element);
 
 void meminfo_browse_zvals_from_symbol_table(php_stream *stream, char * frame_label, HashTable *symbol_table, meminfo_hashset visited_items, int *first_element);
+void meminfo_traverse_from_symbol_table(php_stream *stream, HashTable *p_symbol_table, meminfo_hashset visited_items, int *first_element);
 void meminfo_browse_zvals_from_op_array(php_stream *stream, char * frame_label, zend_op_array *op_array, zend_execute_data *exec_frame, meminfo_hashset visited_items, int *first_element);
 
 int meminfo_visit_item(void* item_identifier, meminfo_hashset visited_items);

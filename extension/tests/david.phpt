@@ -37,6 +37,7 @@ if (extension_loaded('meminfo')) {
 
     $s = fopen("php://stdout", "w");
     meminfo_dump($s);
+    /* meminfo_test(); */
 } else {
     echo "Meminfo is not installed\n";
 }
