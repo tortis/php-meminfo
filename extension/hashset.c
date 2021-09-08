@@ -16,8 +16,6 @@
  */
 
 #include <assert.h>
-#include <stdio.h>
-
 #include "hashset.h"
 
 static const unsigned int prime_1 = 73;
@@ -95,7 +93,6 @@ static void maybe_rehash(hashset_t set)
         set->nbits++;
         set->capacity = (size_t)(1 << set->nbits);
         set->mask = set->capacity - 1;
-        fprintf(stdout, "Incrasing hashset capcaity to %lu\n", set->capacity);
         set->items = calloc(set->capacity, sizeof(size_t));
         set->nitems = 0;
         set->n_deleted_items = 0;
