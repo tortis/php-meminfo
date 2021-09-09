@@ -55,7 +55,7 @@ zend_module_entry meminfo_module_entry = {
 
 PHP_GINIT_FUNCTION(meminfo)
 {
-	meminfo_globals->dump_on_limit = false;
+	meminfo_globals->dump_on_limit = 0;
 }
 
 PHP_MINFO_FUNCTION(meminfo)
