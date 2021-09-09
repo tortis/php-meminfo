@@ -4,6 +4,7 @@
 
 #include "php.h"
 #include "php_meminfo.h"
+#include "php_ini.h"
 
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
@@ -43,11 +44,24 @@ zend_module_entry meminfo_module_entry = {
     PHP_MSHUTDOWN(meminfo),
     NULL,
     NULL,
-    NULL,
+    PHP_MINFO(meminfo),
     MEMINFO_VERSION,
-    STANDARD_MODULE_PROPERTIES
+    PHP_MODULE_GLOBALS(meminfo),
+    PHP_GINIT(meminfo),
+    NULL,
+    NULL,
+    STANDARD_MODULE_PROPERTIES_EX
 };
 
+PHP_GINIT_FUNCTION(meminfo)
+{
+	meminfo_globals->dump_on_limit = false;
+}
+
+PHP_MINFO_FUNCTION(meminfo)
+{
+    DISPLAY_INI_ENTRIES();
+}
 
 #if   PHP_VERSION_ID < 70200 /* PHP 7.1 */
 static void meminfo_zend_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
@@ -66,23 +80,26 @@ static void meminfo_zend_error_cb(int type, zend_string *error_filename, const u
 #endif
 
 	if (EXPECTED(!should_autodump(type, msg))) {
-		original_zend_error_cb(MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU);
+		original_zend_error_cb(MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU);
 		return;
 	}
 
     zend_set_memory_limit((size_t)Z_L(-1) >> (size_t)Z_L(1));
 
-    // @@@ TODO get file name from ini setting
-    char* id;
-    php_stream* stream = php_stream_fopen_from_fd(fileno(stdout), "w", id);
+    char outfile[500];
+    sprintf(outfile, "%s/php_heap_%d.json", INI_STR("meminfo.dump_dir"), (int)time(NULL));
+
+    php_stream* stream = php_stream_fopen(outfile, "w", NULL);
     perform_dump(stream, 1);
 
     zend_set_memory_limit(PG(memory_limit));
-    original_zend_error_cb(MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU);
+    original_zend_error_cb(MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU);
 }
 
 PHP_MINIT_FUNCTION(meminfo)
 {
+    REGISTER_INI_ENTRIES();
+
     original_zend_error_cb = zend_error_cb;
     zend_error_cb = meminfo_zend_error_cb;
 
@@ -91,6 +108,8 @@ PHP_MINIT_FUNCTION(meminfo)
 
 PHP_MSHUTDOWN_FUNCTION(meminfo)
 {
+    UNREGISTER_INI_ENTRIES();
+
     zend_error_cb = original_zend_error_cb;
 
     return SUCCESS;
@@ -688,9 +707,9 @@ static zend_bool should_autodump(int error_type, const char *message) {
 		return 0;
 	}
 
-	/* if (EXPECTED(!MEMPROF_G(profile_flags).dump_on_limit)) { */ // @@@ TODO get ini setting
-	/* 	return 0; */
-	/* } */
+	if (EXPECTED(!MEMINFO_G(dump_on_limit))) {
+		return 0;
+	}
 
 	if (EXPECTED(strncmp(MEMORY_LIMIT_ERROR_PREFIX, message, strlen(MEMORY_LIMIT_ERROR_PREFIX)) != 0)) {
 		return 0;

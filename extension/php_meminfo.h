@@ -24,9 +24,23 @@ typedef hashset_t meminfo_hashset;
 typedef HashTable *meminfo_hashset;
 #endif
 
+ZEND_BEGIN_MODULE_GLOBALS(meminfo)
+    zend_bool dump_on_limit;
+ZEND_END_MODULE_GLOBALS(meminfo)
+
+static ZEND_DECLARE_MODULE_GLOBALS(meminfo)
+#define MEMINFO_G(v) ZEND_MODULE_GLOBALS_ACCESSOR(meminfo, v)
+
 PHP_FUNCTION(meminfo_dump);
 PHP_MSHUTDOWN_FUNCTION(meminfo);
 PHP_MINIT_FUNCTION(meminfo);
+PHP_MINFO_FUNCTION(meminfo);
+PHP_GINIT_FUNCTION(meminfo);
+
+PHP_INI_BEGIN()
+STD_PHP_INI_ENTRY("meminfo.dump_on_limit", "Off", PHP_INI_ALL, OnUpdateBool, dump_on_limit, zend_meminfo_globals, meminfo_globals)
+PHP_INI_ENTRY("meminfo.dump_dir", "/tmp", PHP_INI_ALL, NULL)
+PHP_INI_END()
 
 // zval dumping functions
 void perform_dump(php_stream* stream, zend_bool destructive);
@@ -84,16 +98,16 @@ zend_ulong meminfo_get_element_size(zval *z);
 // See https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
 #if   PHP_VERSION_ID < 70200 /* PHP 7.1 */
 static void (*original_zend_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
-#define MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
+#define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
 #elif PHP_VERSION_ID < 80000 /* PHP 7.2 - 7.4 */
 static void (*original_zend_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args);
-#define MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
+#define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
 #elif PHP_VERSION_ID < 80100 /* PHP 8.0 */
 static void (*original_zend_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
-#define MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
+#define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
 #else                        /* PHP 8.1 */
 static void (*original_zend_error_cb)(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
-#define MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
+#define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
 #endif
 
 extern zend_module_entry meminfo_entry;
