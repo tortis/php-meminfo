@@ -41,3 +41,6 @@ include
 
 # PHP tests
 tmp-php.ini
+
+# IDE/LSP
+compile_flags.txt
