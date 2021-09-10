@@ -1,6 +1,6 @@
 name: Build the extension and test the analyzers
 
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   build:
