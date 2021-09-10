@@ -43,13 +43,12 @@ PHP_INI_ENTRY("meminfo.dump_dir", "/tmp", PHP_INI_ALL, NULL)
 PHP_INI_END()
 
 // zval dumping functions
-void perform_dump(php_stream* stream, zend_bool destructive);
+void perform_dump(php_stream* stream);
 
 void meminfo_browse_exec_frames(
     php_stream *stream,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 );
 
 void meminfo_browse_class_static_members(
@@ -63,8 +62,7 @@ void meminfo_dump_symbol_table(
     char* frame_label,
     HashTable *p_symbol_table,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 );
 
 void meminfo_dump_zval(
@@ -74,8 +72,7 @@ void meminfo_dump_zval(
     zval * zv,
     meminfo_hashset visited_items,
     meminfo_stack* stack,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 );
 
 void meminfo_dump_zval_children(

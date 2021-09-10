@@ -90,7 +90,7 @@ static void meminfo_zend_error_cb(int type, zend_string *error_filename, const u
     sprintf(outfile, "%s/php_heap_%d.json", INI_STR("meminfo.dump_dir"), (int)time(NULL));
 
     php_stream* stream = php_stream_fopen(outfile, "w", NULL);
-    perform_dump(stream, 1);
+    perform_dump(stream);
 
     zend_set_memory_limit(PG(memory_limit));
     original_zend_error_cb(MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU);
@@ -129,10 +129,10 @@ PHP_FUNCTION(meminfo_dump)
     }
     php_stream_from_zval(stream, zval_stream);
 
-    perform_dump(stream, 0);
+    perform_dump(stream);
 }
 
-void perform_dump(php_stream* stream, zend_bool destructive)
+void perform_dump(php_stream* stream)
 {
     zend_bool first_element = 1;
 
@@ -160,7 +160,7 @@ void perform_dump(php_stream* stream, zend_bool destructive)
 
     php_stream_printf(stream, "  \"items\": {\n");
 
-    meminfo_browse_exec_frames(stream, visited_items, &first_element, destructive);
+    meminfo_browse_exec_frames(stream, visited_items, &first_element);
     meminfo_browse_class_static_members(stream, visited_items, &first_element);
 
     php_stream_printf(stream, "\n    }\n");
@@ -179,8 +179,7 @@ void perform_dump(php_stream* stream, zend_bool destructive)
 void meminfo_browse_exec_frames(
     php_stream *stream,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     zend_execute_data *exec_frame, *prev_frame;
@@ -214,8 +213,7 @@ void meminfo_browse_exec_frames(
                 frame_label,
                 p_symbol_table,
                 visited_items,
-                first_element,
-                destructive
+                first_element
             );
         }
         exec_frame = exec_frame->prev_execute_data;
@@ -274,7 +272,7 @@ void meminfo_browse_class_static_members(
 
                     zstr_symbol_name = zend_string_init(symbol_name, strlen(symbol_name), 0);
 
-                    meminfo_dump_zval(stream, frame_label, zstr_symbol_name, prop, visited_items, NULL, first_element, 0);
+                    meminfo_dump_zval(stream, frame_label, zstr_symbol_name, prop, visited_items, NULL, first_element);
 
                     zend_string_release(zstr_symbol_name);
                 }
@@ -293,8 +291,7 @@ void meminfo_dump_symbol_table(
     char* frame_label,
     HashTable *p_symbol_table,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     zval *zval_to_dump;
@@ -317,8 +314,7 @@ void meminfo_dump_symbol_table(
             zval_to_dump,
             visited_items,
             &stack,
-            first_element,
-            destructive
+            first_element
         );
 
         zend_hash_move_forward_ex(p_symbol_table, &pos);
@@ -326,7 +322,7 @@ void meminfo_dump_symbol_table(
 
     while (meminfo_stack_num_elements(&stack) > 0) {
         zval_to_dump = meminfo_stack_pop(&stack);
-        meminfo_dump_zval(stream, NULL, NULL, zval_to_dump, visited_items, &stack, first_element, destructive);
+        meminfo_dump_zval(stream, NULL, NULL, zval_to_dump, visited_items, &stack, first_element);
     }
 
     meminfo_stack_destroy(&stack);
@@ -339,8 +335,7 @@ void meminfo_dump_zval(
     zval * zv,
     meminfo_hashset visited_items,
     meminfo_stack* stack,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     char zval_identifier[17];
