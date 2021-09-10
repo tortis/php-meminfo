@@ -9,8 +9,8 @@ Check dumping class private field
     $dump = fopen('php://memory', 'rw');
 
     class MyClass {
-        public string $pub_str;
-        private string $priv_str;
+        public $pub_str;
+        private $priv_str;
 
         function __construct(string $pub, string $priv) {
             $this->pub_str = $pub;
