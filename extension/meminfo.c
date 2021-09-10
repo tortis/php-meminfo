@@ -423,7 +423,7 @@ void meminfo_dump_zval(
         int is_temp;
         properties = Z_OBJDEBUG_P(zv, is_temp);
         if (properties != NULL) {
-            meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
+            meminfo_dump_zval_children(stream, properties, 1, visited_items, stack);
             if (is_temp) {
                 zend_hash_destroy(properties);
                 efree(properties);
