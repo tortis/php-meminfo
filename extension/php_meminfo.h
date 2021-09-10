@@ -12,17 +12,10 @@ extern zend_module_entry meminfo_module_entry;
 #define MEMINFO_NAME "PHP Meminfo"
 #define MEMINFO_VERSION "2.0.0-beta1"
 #define MEMINFO_AUTHOR "Benoit Jacquemont"
-#define MEMINFO_COPYRIGHT                                                      \
-  "Copyright (c) 2010-2021 by Benoit Jacquemont & contributors"
+#define MEMINFO_COPYRIGHT "Copyright (c) 2010-2021 by Benoit Jacquemont & contributors"
 #define MEMINFO_COPYRIGHT_SHORT "Copyright (c) 2010-2021"
 
-#define USE_HASHSET 1
-
-#ifdef USE_HASHSET
 typedef hashset_t meminfo_hashset;
-#else
-typedef HashTable *meminfo_hashset;
-#endif
 
 ZEND_BEGIN_MODULE_GLOBALS(meminfo)
     zend_bool dump_on_limit;

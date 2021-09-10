@@ -136,18 +136,12 @@ void perform_dump(php_stream* stream)
 {
     zend_bool first_element = 1;
 
-#ifdef USE_HASHSET
     meminfo_hashset visited_items = hashset_create();
 
     if (visited_items == NULL) {
         fprintf(stderr, "failed to create hashset instance\n");
         abort(); // @@@ Trigger a proper exception
     }
-#else
-    HashTable ht;
-    zend_hash_init(&ht, 1000, NULL, NULL, 0);
-    meminfo_hashset visited_items = &ht;
-#endif
 
     php_stream_printf(stream, "{\n");
 
@@ -166,11 +160,7 @@ void perform_dump(php_stream* stream)
     php_stream_printf(stream, "\n    }\n");
     php_stream_printf(stream, "}\n}\n");
 
-#ifdef USE_HASHSET
     hashset_destroy(visited_items);
-#else
-    zend_hash_destroy(visited_items);
-#endif
 }
 
 /**
@@ -357,15 +347,9 @@ void meminfo_dump_zval(
         sprintf(zval_identifier, "%p", zv);
     }
 
-#ifdef USE_HASHSET
     if (meminfo_visit_item(id, visited_items)) {
         return;
     }
-#else
-    if (meminfo_visit_item(zval_identifier, visited_items)) {
-        return;
-    }
-#endif
 
     if (! *first_element) {
         php_stream_printf(stream, "\n    },\n");
@@ -496,29 +480,13 @@ void meminfo_dump_zval_children(
 
 int meminfo_visit_item(void* item_identifier, meminfo_hashset visited_items)
 {
-    int found = 0;
-#ifdef USE_HASHSET
     if (hashset_is_member(visited_items, item_identifier)) {
-        found = 1;
-    } else {
-        hashset_add(visited_items, item_identifier);
-    }
-#else
-    zend_string * zstr_item_identifier;
-    zstr_item_identifier = zend_string_init(item_identifier, strlen(item_identifier), 0);
-    zval isset;
-    ZVAL_LONG(&isset, 1);
-
-    if (zend_hash_exists(visited_items, zstr_item_identifier)) {
-        found = 1;
-    } else {
-        zend_hash_add(visited_items, zstr_item_identifier, &isset);
+        return 1;
     }
 
-    zend_string_release(zstr_item_identifier);
-#endif
+    hashset_add(visited_items, item_identifier);
 
-    return found;
+    return 0;
 }
 
 /**
