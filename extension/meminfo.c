@@ -412,24 +412,12 @@ void meminfo_dump_zval(
 
         php_stream_printf(stream, ",\n        \"object_handle\" : \"%d\"", Z_OBJ_HANDLE_P(zv));
 
-#if PHP_VERSION_ID >= 70400
         zend_object* obj;
         obj = Z_OBJ(*zv);
         rebuild_object_properties(obj);
         if (obj->properties != NULL) {
             meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
         }
-#else
-        int is_temp;
-        properties = Z_OBJDEBUG_P(zv, is_temp);
-        if (properties != NULL) {
-            meminfo_dump_zval_children(stream, properties, 1, visited_items, stack);
-            if (is_temp) {
-                zend_hash_destroy(properties);
-                efree(properties);
-            }
-        }
-#endif
     } else if (Z_TYPE_P(zv) == IS_ARRAY) {
         meminfo_dump_zval_children(stream, Z_ARRVAL_P(zv), 0, visited_items, stack);
     }
