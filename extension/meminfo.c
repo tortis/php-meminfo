@@ -401,8 +401,8 @@ void meminfo_dump_zval(
     }
 
     if (Z_TYPE_P(zv) == IS_OBJECT) {
-        HashTable *properties;
-        zend_string * escaped_class_name;
+        HashTable* properties;
+        zend_string* escaped_class_name;
 
         properties = NULL;
 
@@ -413,32 +413,33 @@ void meminfo_dump_zval(
         php_stream_printf(stream, ",\n        \"object_handle\" : \"%d\"", Z_OBJ_HANDLE_P(zv));
 
 #if PHP_VERSION_ID >= 70400
-        properties = zend_get_properties_for(zv, ZEND_PROP_PURPOSE_DEBUG);
-#else
-        int is_temp;
-        properties = Z_OBJDEBUG_P(zv, is_temp);
-#endif
-
-        if (properties != NULL) {
-            meminfo_dump_zval_children(stream, properties, 1, visited_items, stack);
-
-#if PHP_VERSION_ID < 70400
-            if (is_temp) {
-                zend_hash_destroy(properties);
-                efree(properties);
-            }
-#endif
+        zend_object* obj;
+        obj = Z_OBJ(*zv);
+        /* rebuild_object_properties(obj); */
+        /* properties = zend_get_properties_for(zv, ZEND_PROP_PURPOSE_DEBUG); */
+        if (obj->properties != NULL) {
+            meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
         }
-#if PHP_VERSION_ID >= 70400
+
         if (destructive) {
             // This actually frees up memory which can prevent a secondary OOM
             // error when performing a dump during an OOM error.
             //
             // This may result in instability and should only be done during
             // shutdown
-            zend_array_destroy(properties);
+            /* zend_array_destroy(properties); */
         } else {
-            zend_release_properties(properties);
+            /* zend_release_properties(properties); */
+        }
+#else
+        int is_temp;
+        properties = Z_OBJDEBUG_P(zv, is_temp);
+        if (properties != NULL) {
+            meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
+            if (is_temp) {
+                zend_hash_destroy(properties);
+                efree(properties);
+            }
         }
 #endif
     } else if (Z_TYPE_P(zv) == IS_ARRAY) {

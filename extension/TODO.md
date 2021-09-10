@@ -1,10 +1,11 @@
 ## TODO
 - [x] Add ini setting to auto-dump on OOM (and path)
     - [ ] Browse "main_symbol_table" on oom (execution stack is lost at this point)
+        Is this necessary? Need to test with paycom example to verify
     - [x] Update README to document new settings
-- [ ] Introduce binary output format (json files getting too big)
-- [ ] Look meminfo_browse_class_static_members memory usage
 - [ ] Add ini setting to optionally include static class values in dump
+- [ ] Look meminfo_browse_class_static_members memory usage
+- [ ] Introduce binary output format (json files getting too big)
 
 ## Completed
 - [x] symbol name and stack frame are no longer captured since switching to
