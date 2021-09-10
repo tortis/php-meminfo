@@ -415,21 +415,9 @@ void meminfo_dump_zval(
 #if PHP_VERSION_ID >= 70400
         zend_object* obj;
         obj = Z_OBJ(*zv);
-        /* rebuild_object_properties(obj); */
-        /* properties = zend_get_properties_for(zv, ZEND_PROP_PURPOSE_DEBUG); */
+        rebuild_object_properties(obj);
         if (obj->properties != NULL) {
             meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
-        }
-
-        if (destructive) {
-            // This actually frees up memory which can prevent a secondary OOM
-            // error when performing a dump during an OOM error.
-            //
-            // This may result in instability and should only be done during
-            // shutdown
-            /* zend_array_destroy(properties); */
-        } else {
-            /* zend_release_properties(properties); */
         }
 #else
         int is_temp;
