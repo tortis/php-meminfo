@@ -4,6 +4,7 @@
 
 #include "php.h"
 #include "php_meminfo.h"
+#include "php_ini.h"
 
 #include "ext/standard/info.h"
 #include "ext/standard/php_string.h"
@@ -43,11 +44,24 @@ zend_module_entry meminfo_module_entry = {
     PHP_MSHUTDOWN(meminfo),
     NULL,
     NULL,
-    NULL,
+    PHP_MINFO(meminfo),
     MEMINFO_VERSION,
-    STANDARD_MODULE_PROPERTIES
+    PHP_MODULE_GLOBALS(meminfo),
+    PHP_GINIT(meminfo),
+    NULL,
+    NULL,
+    STANDARD_MODULE_PROPERTIES_EX
 };
 
+PHP_GINIT_FUNCTION(meminfo)
+{
+	meminfo_globals->dump_on_limit = 0;
+}
+
+PHP_MINFO_FUNCTION(meminfo)
+{
+    DISPLAY_INI_ENTRIES();
+}
 
 #if   PHP_VERSION_ID < 70200 /* PHP 7.1 */
 static void meminfo_zend_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
@@ -66,23 +80,26 @@ static void meminfo_zend_error_cb(int type, zend_string *error_filename, const u
 #endif
 
 	if (EXPECTED(!should_autodump(type, msg))) {
-		original_zend_error_cb(MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU);
+		original_zend_error_cb(MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU);
 		return;
 	}
 
     zend_set_memory_limit((size_t)Z_L(-1) >> (size_t)Z_L(1));
 
-    // @@@ TODO get file name from ini setting
-    char* id;
-    php_stream* stream = php_stream_fopen_from_fd(fileno(stdout), "w", id);
-    perform_dump(stream, 1);
+    char outfile[500];
+    sprintf(outfile, "%s/php_heap_%d.json", INI_STR("meminfo.dump_dir"), (int)time(NULL));
+
+    php_stream* stream = php_stream_fopen(outfile, "w", NULL);
+    perform_dump(stream);
 
     zend_set_memory_limit(PG(memory_limit));
-    original_zend_error_cb(MEMPROF_ZEND_ERROR_CB_ARGS_PASSTHRU);
+    original_zend_error_cb(MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU);
 }
 
 PHP_MINIT_FUNCTION(meminfo)
 {
+    REGISTER_INI_ENTRIES();
+
     original_zend_error_cb = zend_error_cb;
     zend_error_cb = meminfo_zend_error_cb;
 
@@ -91,6 +108,8 @@ PHP_MINIT_FUNCTION(meminfo)
 
 PHP_MSHUTDOWN_FUNCTION(meminfo)
 {
+    UNREGISTER_INI_ENTRIES();
+
     zend_error_cb = original_zend_error_cb;
 
     return SUCCESS;
@@ -110,10 +129,10 @@ PHP_FUNCTION(meminfo_dump)
     }
     php_stream_from_zval(stream, zval_stream);
 
-    perform_dump(stream, 0);
+    perform_dump(stream);
 }
 
-void perform_dump(php_stream* stream, zend_bool destructive)
+void perform_dump(php_stream* stream)
 {
     zend_bool first_element = 1;
 
@@ -141,7 +160,7 @@ void perform_dump(php_stream* stream, zend_bool destructive)
 
     php_stream_printf(stream, "  \"items\": {\n");
 
-    meminfo_browse_exec_frames(stream, visited_items, &first_element, destructive);
+    meminfo_browse_exec_frames(stream, visited_items, &first_element);
     meminfo_browse_class_static_members(stream, visited_items, &first_element);
 
     php_stream_printf(stream, "\n    }\n");
@@ -160,8 +179,7 @@ void perform_dump(php_stream* stream, zend_bool destructive)
 void meminfo_browse_exec_frames(
     php_stream *stream,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     zend_execute_data *exec_frame, *prev_frame;
@@ -195,8 +213,7 @@ void meminfo_browse_exec_frames(
                 frame_label,
                 p_symbol_table,
                 visited_items,
-                first_element,
-                destructive
+                first_element
             );
         }
         exec_frame = exec_frame->prev_execute_data;
@@ -255,7 +272,7 @@ void meminfo_browse_class_static_members(
 
                     zstr_symbol_name = zend_string_init(symbol_name, strlen(symbol_name), 0);
 
-                    meminfo_dump_zval(stream, frame_label, zstr_symbol_name, prop, visited_items, NULL, first_element, 0);
+                    meminfo_dump_zval(stream, frame_label, zstr_symbol_name, prop, visited_items, NULL, first_element);
 
                     zend_string_release(zstr_symbol_name);
                 }
@@ -274,8 +291,7 @@ void meminfo_dump_symbol_table(
     char* frame_label,
     HashTable *p_symbol_table,
     meminfo_hashset visited_items,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     zval *zval_to_dump;
@@ -298,8 +314,7 @@ void meminfo_dump_symbol_table(
             zval_to_dump,
             visited_items,
             &stack,
-            first_element,
-            destructive
+            first_element
         );
 
         zend_hash_move_forward_ex(p_symbol_table, &pos);
@@ -307,7 +322,7 @@ void meminfo_dump_symbol_table(
 
     while (meminfo_stack_num_elements(&stack) > 0) {
         zval_to_dump = meminfo_stack_pop(&stack);
-        meminfo_dump_zval(stream, NULL, NULL, zval_to_dump, visited_items, &stack, first_element, destructive);
+        meminfo_dump_zval(stream, NULL, NULL, zval_to_dump, visited_items, &stack, first_element);
     }
 
     meminfo_stack_destroy(&stack);
@@ -320,8 +335,7 @@ void meminfo_dump_zval(
     zval * zv,
     meminfo_hashset visited_items,
     meminfo_stack* stack,
-    zend_bool* first_element,
-    zend_bool destructive
+    zend_bool* first_element
 )
 {
     char zval_identifier[17];
@@ -382,8 +396,8 @@ void meminfo_dump_zval(
     }
 
     if (Z_TYPE_P(zv) == IS_OBJECT) {
-        HashTable *properties;
-        zend_string * escaped_class_name;
+        HashTable* properties;
+        zend_string* escaped_class_name;
 
         properties = NULL;
 
@@ -393,35 +407,12 @@ void meminfo_dump_zval(
 
         php_stream_printf(stream, ",\n        \"object_handle\" : \"%d\"", Z_OBJ_HANDLE_P(zv));
 
-#if PHP_VERSION_ID >= 70400
-        properties = zend_get_properties_for(zv, ZEND_PROP_PURPOSE_DEBUG);
-#else
-        int is_temp;
-        properties = Z_OBJDEBUG_P(zv, is_temp);
-#endif
-
-        if (properties != NULL) {
-            meminfo_dump_zval_children(stream, properties, 1, visited_items, stack);
-
-#if PHP_VERSION_ID < 70400
-            if (is_temp) {
-                zend_hash_destroy(properties);
-                efree(properties);
-            }
-#endif
+        zend_object* obj;
+        obj = Z_OBJ(*zv);
+        rebuild_object_properties(obj);
+        if (obj->properties != NULL) {
+            meminfo_dump_zval_children(stream, obj->properties, 1, visited_items, stack);
         }
-#if PHP_VERSION_ID >= 70400
-        if (destructive) {
-            // This actually frees up memory which can prevent a secondary OOM
-            // error when performing a dump during an OOM error.
-            //
-            // This may result in instability and should only be done during
-            // shutdown
-            zend_array_destroy(properties);
-        } else {
-            zend_release_properties(properties);
-        }
-#endif
     } else if (Z_TYPE_P(zv) == IS_ARRAY) {
         meminfo_dump_zval_children(stream, Z_ARRVAL_P(zv), 0, visited_items, stack);
     }
@@ -688,9 +679,9 @@ static zend_bool should_autodump(int error_type, const char *message) {
 		return 0;
 	}
 
-	/* if (EXPECTED(!MEMPROF_G(profile_flags).dump_on_limit)) { */ // @@@ TODO get ini setting
-	/* 	return 0; */
-	/* } */
+	if (EXPECTED(!MEMINFO_G(dump_on_limit))) {
+		return 0;
+	}
 
 	if (EXPECTED(strncmp(MEMORY_LIMIT_ERROR_PREFIX, message, strlen(MEMORY_LIMIT_ERROR_PREFIX)) != 0)) {
 		return 0;

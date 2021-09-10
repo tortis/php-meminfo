@@ -35,6 +35,14 @@ Add the following line to your `php.ini`:
 extension=meminfo.so
 ```
 
+## Enable dump on limit
+The ini settings `dump_on_limit` and `dump_dir` can be used to enable automatic heap dumps on OOM.
+
+```ini
+meminfo.dump_on_limit = On; Defaults Off
+meminfo.dump_dir = /tmp; Will write a file /tmp/php_heap_<timestamp>.json
+```
+
 Installing analyzers
 --------------------
 Analyzers allow to analyze a memory dump (see below).
