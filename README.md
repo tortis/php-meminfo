@@ -106,8 +106,19 @@ $ bin/analyzer top-children /tmp/my_dump_file.json
 | 4   | 0x7fffeab63ca0 | 3605     |
 | 5   | 0x7fffd3161400 | 2400     |
 +-----+----------------+----------+
-
 ```
+
+### Visualizing The Heap as a Treemap
+[php-meminfo-treemap](https://gitlab.com/findley/php-meminfo-treemap) can be
+used to generate a browser based treemap visualization powered by google
+charts. The caveat is that the heap dump is a graph, so you must select a root
+node to render a treemap.
+
+#### Example
+```bash
+php-meminfo-treemap heap.json 0x7fe7d2d65020 -o treemap.html
+```
+![](https://gitlab.com/findley/php-meminfo-treemap/-/raw/master/docs/meminfo-treechart.png)
 
 ### Querying the memory dump to find specific objects
 ```bash
