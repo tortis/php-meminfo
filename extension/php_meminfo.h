@@ -39,38 +39,38 @@ PHP_INI_END()
 void perform_dump(php_stream* stream);
 
 void meminfo_browse_exec_frames(
-    php_stream *stream,
+    php_stream* stream,
     meminfo_hashset visited_items,
     zend_bool* first_element
 );
 
 void meminfo_browse_class_static_members(
-    php_stream *stream,
+    php_stream* stream,
     meminfo_hashset visited_items,
     zend_bool* first_element
 );
 
 void meminfo_dump_symbol_table(
-    php_stream *stream,
+    php_stream* stream,
     char* frame_label,
-    HashTable *p_symbol_table,
+    HashTable* p_symbol_table,
     meminfo_hashset visited_items,
     zend_bool* first_element
 );
 
 void meminfo_dump_zval(
-    php_stream * stream,
+    php_stream* stream,
     char* frame_label,
     zend_string* symbol_name,
-    zval * zv,
+    zval* zv,
     meminfo_hashset visited_items,
     meminfo_stack* stack,
     zend_bool* first_element
 );
 
 void meminfo_dump_zval_children(
-    php_stream *stream,
-    HashTable *ht,
+    php_stream* stream,
+    HashTable* ht,
     zend_bool is_object,
     meminfo_hashset visited_items,
     meminfo_stack* stack
@@ -78,25 +78,25 @@ void meminfo_dump_zval_children(
 
 // Helper functions
 int meminfo_visit_item(void* item_identifier, meminfo_hashset visited_items);
-zend_ulong meminfo_get_element_size(zval *zv);
+zend_ulong meminfo_get_element_size(zval* zv);
 void meminfo_build_frame_label(char* frame_label, int frame_label_len, zend_execute_data* frame);
-zend_string * meminfo_escape_for_json(const char *s);
-static zend_bool should_autodump(int error_type, const char *message);
-zend_ulong meminfo_get_element_size(zval *z);
+zend_string* meminfo_escape_for_json(const char* s);
+static zend_bool should_autodump(int error_type, const char* message);
+zend_ulong meminfo_get_element_size(zval* z);
 
 // Function pointer to original error handler
 // See https://www.phpinternalsbook.com/php7/extensions_design/hooks.html
 #if   PHP_VERSION_ID < 70200 /* PHP 7.1 */
-static void (*original_zend_error_cb)(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args);
+static void (*original_zend_error_cb)(int type, const char* error_filename, const uint error_lineno, const char* format, va_list args);
 #define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
 #elif PHP_VERSION_ID < 80000 /* PHP 7.2 - 7.4 */
-static void (*original_zend_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args);
+static void (*original_zend_error_cb)(int type, const char* error_filename, const uint32_t error_lineno, const char* format, va_list args);
 #define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, format, args
 #elif PHP_VERSION_ID < 80100 /* PHP 8.0 */
-static void (*original_zend_error_cb)(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message);
+static void (*original_zend_error_cb)(int type, const char* error_filename, const uint32_t error_lineno, zend_string* message);
 #define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
 #else                        /* PHP 8.1 */
-static void (*original_zend_error_cb)(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message);
+static void (*original_zend_error_cb)(int type, zend_string* error_filename, const uint32_t error_lineno, zend_string* message);
 #define MEMINFO_ZEND_ERROR_CB_ARGS_PASSTHRU type, error_filename, error_lineno, message
 #endif
 

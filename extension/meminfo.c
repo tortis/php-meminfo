@@ -64,19 +64,19 @@ PHP_MINFO_FUNCTION(meminfo)
 }
 
 #if   PHP_VERSION_ID < 70200 /* PHP 7.1 */
-static void meminfo_zend_error_cb(int type, const char *error_filename, const uint error_lineno, const char *format, va_list args)
+static void meminfo_zend_error_cb(int type, const char* error_filename, const uint error_lineno, const char* format, va_list args)
 #elif PHP_VERSION_ID < 80000 /* PHP 7.2 - 7.4 */
-static void meminfo_zend_error_cb(int type, const char *error_filename, const uint32_t error_lineno, const char *format, va_list args)
+static void meminfo_zend_error_cb(int type, const char* error_filename, const uint32_t error_lineno, const char* format, va_list args)
 #elif PHP_VERSION_ID < 80100 /* PHP 8.0 */
-static void meminfo_zend_error_cb(int type, const char *error_filename, const uint32_t error_lineno, zend_string *message)
+static void meminfo_zend_error_cb(int type, const char* error_filename, const uint32_t error_lineno, zend_string* message)
 #else                        /* PHP 8.1 */
-static void meminfo_zend_error_cb(int type, zend_string *error_filename, const uint32_t error_lineno, zend_string *message)
+static void meminfo_zend_error_cb(int type, zend_string* error_filename, const uint32_t error_lineno, zend_string* message)
 #endif
 {
 #if PHP_VERSION_ID < 80000
-	const char * msg = format;
+	const char* msg = format;
 #else
-	const char * msg = ZSTR_VAL(message);
+	const char* msg = ZSTR_VAL(message);
 #endif
 
 	if (EXPECTED(!should_autodump(type, msg))) {
@@ -121,8 +121,8 @@ PHP_MSHUTDOWN_FUNCTION(meminfo)
  */
 PHP_FUNCTION(meminfo_dump)
 {
-    zval *zval_stream;
-    php_stream *stream;
+    zval* zval_stream;
+    php_stream* stream;
 
     if (zend_parse_parameters(ZEND_NUM_ARGS(), "r", &zval_stream) == FAILURE) {
         return;
@@ -167,13 +167,13 @@ void perform_dump(php_stream* stream)
  * Go through all exec frames to gather declared variables and follow them to record items in memory
  */
 void meminfo_browse_exec_frames(
-    php_stream *stream,
+    php_stream* stream,
     meminfo_hashset visited_items,
     zend_bool* first_element
 )
 {
     zend_execute_data *exec_frame, *prev_frame;
-    zend_array *p_symbol_table;
+    zend_array* p_symbol_table;
     char frame_label[500];
 
     exec_frame = EG(current_execute_data);
@@ -214,21 +214,21 @@ void meminfo_browse_exec_frames(
  * Go through static members of classes
  */
 void meminfo_browse_class_static_members(
-    php_stream *stream,
+    php_stream* stream,
     meminfo_hashset visited_items,
     zend_bool* first_element
 )
 {
     HashPosition ce_pos;
     HashPosition prop_pos;
-    zend_class_entry *class_entry;
-    zend_property_info * prop_info;
+    zend_class_entry* class_entry;
+    zend_property_info* prop_info;
 
     char frame_label[500];
     char symbol_name[500];
     const char *prop_name, *class_name;
-    zend_string * zstr_symbol_name;
-    zval * prop;
+    zend_string* zstr_symbol_name;
+    zval* prop;
 
     zend_hash_internal_pointer_reset_ex(CG(class_table), &ce_pos);
     while ((class_entry = zend_hash_get_current_data_ptr_ex(CG(class_table), &ce_pos)) != NULL) {
@@ -239,7 +239,7 @@ void meminfo_browse_class_static_members(
         if (class_entry->static_members_table) {
 #endif
 
-            HashTable *properties_info = &(class_entry->properties_info);
+            HashTable* properties_info = &(class_entry->properties_info);
 
             zend_hash_internal_pointer_reset_ex(properties_info, &prop_pos);
             while ((prop_info = zend_hash_get_current_data_ptr_ex(properties_info, &prop_pos)) != NULL) {
@@ -277,17 +277,17 @@ void meminfo_browse_class_static_members(
 }
 
 void meminfo_dump_symbol_table(
-    php_stream *stream,
+    php_stream* stream,
     char* frame_label,
-    HashTable *p_symbol_table,
+    HashTable* p_symbol_table,
     meminfo_hashset visited_items,
     zend_bool* first_element
 )
 {
-    zval *zval_to_dump;
+    zval* zval_to_dump;
     HashPosition pos;
 
-    zend_string *symbol_name;
+    zend_string* symbol_name;
     zend_ulong num_key; // Not actually used
 
     meminfo_stack stack;
@@ -319,10 +319,10 @@ void meminfo_dump_symbol_table(
 }
 
 void meminfo_dump_zval(
-    php_stream * stream,
+    php_stream* stream,
     char* frame_label,
     zend_string* symbol_name,
-    zval * zv,
+    zval* zv,
     meminfo_hashset visited_items,
     meminfo_stack* stack,
     zend_bool* first_element
@@ -362,10 +362,10 @@ void meminfo_dump_zval(
     php_stream_printf(stream, ",\n        \"size\" : \"%ld\"", meminfo_get_element_size(zv));
 
     if (frame_label) {
-        zend_string * escaped_frame_label;
+        zend_string* escaped_frame_label;
 
         if (symbol_name) {
-            zend_string * escaped_symbol_name;
+            zend_string* escaped_symbol_name;
             escaped_symbol_name = meminfo_escape_for_json(ZSTR_VAL(symbol_name));
             php_stream_printf(stream, ",\n        \"symbol_name\" : \"%s\"", ZSTR_VAL(escaped_symbol_name));
             zend_string_release(escaped_symbol_name);
@@ -403,16 +403,16 @@ void meminfo_dump_zval(
 }
 
 void meminfo_dump_zval_children(
-    php_stream *stream,
-    HashTable *ht,
+    php_stream* stream,
+    HashTable* ht,
     zend_bool is_object,
     meminfo_hashset visited_items,
     meminfo_stack* stack
 )
 {
-    zval *zval;
+    zval* zval;
 
-    zend_string *key;
+    zend_string* key;
     HashPosition pos;
     zend_ulong num_key;
 
@@ -450,14 +450,14 @@ void meminfo_dump_zval_children(
 
                 if (is_object) {
                     const char *property_name, *class_name;
-                    zend_string * escaped_property_name;
+                    zend_string* escaped_property_name;
 
                     zend_unmangle_property_name(key, &class_name, &property_name);
                     escaped_property_name = meminfo_escape_for_json(property_name);
                     php_stream_printf(stream, "            \"%s\":\"%s\"", ZSTR_VAL(escaped_property_name), zval_id);
                     zend_string_release(escaped_property_name);
                 } else {
-                    zend_string * escaped_key;
+                    zend_string* escaped_key;
                     escaped_key = meminfo_escape_for_json(ZSTR_VAL(key));
                     php_stream_printf(stream, "            \"%s\":\"%s\"", ZSTR_VAL(escaped_key), zval_id);
                     zend_string_release(escaped_key);
@@ -496,7 +496,7 @@ int meminfo_visit_item(void* item_identifier, meminfo_hashset visited_items)
  *
  * @return zend_ulong
  */
-zend_ulong meminfo_get_element_size(zval *zv)
+zend_ulong meminfo_get_element_size(zval* zv)
 {
     zend_ulong size;
 
@@ -529,12 +529,12 @@ zend_ulong meminfo_get_element_size(zval *zv)
  */
 void meminfo_build_frame_label(char* frame_label, int frame_label_len, zend_execute_data* frame)
 {
-    zend_function *func;
-    const char *function_name;
-    char * call_type;
-    zend_string *class_name = NULL;
-    zend_object *object;
-    zend_execute_data *ptr;
+    zend_function* func;
+    const char* function_name;
+    char* call_type;
+    zend_string* class_name = NULL;
+    zend_object* object;
+    zend_execute_data* ptr;
 
     object = Z_OBJ(frame->This);
     ptr = frame->prev_execute_data;
@@ -616,14 +616,14 @@ void meminfo_build_frame_label(char* frame_label, int frame_label_len, zend_exec
 /**
  * Escape for JSON encoding
  */
-zend_string* meminfo_escape_for_json(const char *s)
+zend_string* meminfo_escape_for_json(const char* s)
 {
     int i;
     char unescaped_char[2];
     char escaped_char[7]; // \uxxxx format
     zend_string *s1, *s2, *s3 = NULL;
 
-    s1 = php_str_to_str((char *) s, strlen(s), "\\", 1, "\\\\", 2);
+    s1 = php_str_to_str((char*) s, strlen(s), "\\", 1, "\\\\", 2);
     s2 = php_str_to_str(ZSTR_VAL(s1), ZSTR_LEN(s1), "\"", 1, "\\\"", 2);
 
     for (i = 0; i <= 0x1f; i++) {
@@ -642,7 +642,7 @@ zend_string* meminfo_escape_for_json(const char *s)
 }
 
 #define MEMORY_LIMIT_ERROR_PREFIX "Allowed memory size of"
-static zend_bool should_autodump(int error_type, const char *message) {
+static zend_bool should_autodump(int error_type, const char* message) {
 	if (EXPECTED(error_type != E_ERROR)) {
 		return 0;
 	}
